@@ -14,6 +14,7 @@ const MobileNav = ({ onLogout }) => {
         { id: 'dashboard', icon: 'fa-house', label: 'Home', path: '/' },
         { id: 'orders', label: 'Orders', icon: 'fa-shopping-basket', path: '/orders' },
         { id: 'menu', label: 'Menu', icon: 'fa-utensils', path: '/menu' },
+        { id: 'website-config', icon: 'fa-laptop-code', label: 'Web', path: '/website-config' },
         { id: 'settings', icon: 'fa-sliders', label: 'Config', path: '/settings' },
     ];
 

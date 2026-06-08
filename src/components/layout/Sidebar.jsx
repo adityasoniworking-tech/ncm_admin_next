@@ -18,6 +18,7 @@ const Sidebar = ({ pendingCount = 0, onLogout }) => {
         { id: 'users', label: 'User Access', icon: 'fa-users-gear', path: '/users' },
         { id: 'profile', label: 'My Profile', icon: 'fa-user-circle', path: '/profile' },
         { id: 'settings', label: 'Settings', icon: 'fa-sliders', path: '/settings' },
+        { id: 'website-config', label: 'Website Config', icon: 'fa-laptop-code', path: '/website-config' },
     ];
 
     const navItems = allItems.filter(item => {
