@@ -136,6 +136,7 @@ export default function AdminLayout({ children }) {
             </div>
 
             <MobileNav
+                pendingCount={stats.pendingOrders}
                 onLogout={() => setIsLogoutModalOpen(true)}
             />
             <PWAUpdater />

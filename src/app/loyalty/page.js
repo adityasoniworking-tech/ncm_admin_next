@@ -61,6 +61,21 @@ export default function LoyaltyPage() {
         setSaving(false);
     };
 
+    const getCustomerName = (customer) => {
+        if (!customer) return 'Unknown User';
+        
+        const names = [customer.displayName, customer.profileName, customer.name];
+        for (let name of names) {
+            if (name && typeof name === 'string' && name.replace(/,/g, '').trim() !== '') {
+                return name.trim();
+            }
+        }
+        
+        if (customer.email) return customer.email.split('@')[0];
+        if (customer.phone) return `User ${customer.phone}`;
+        return `Guest (${customer.id ? customer.id.substring(0, 6) : 'Unknown'})`;
+    };
+
     if (loading) {
         return <div className="p-8 text-center text-gray-500">Loading Loyalty Data...</div>;
     }
@@ -162,7 +177,7 @@ export default function LoyaltyPage() {
                                 {customers.filter(c => c.totalOrders > 0 || c.completedOrders > 0).map(customer => (
                                     <tr key={customer.id} className="hover:bg-gray-50/50 transition-colors">
                                         <td className="p-4">
-                                            <div className="font-bold text-gray-800">{customer.displayName || customer.profileName || customer.name || 'Unknown'}</div>
+                                            <div className="font-bold text-gray-800">{getCustomerName(customer)}</div>
                                             {customer.email && <div className="text-xs text-gray-600">{customer.email}</div>}
                                             {customer.phone && <div className="text-xs text-gray-400">{customer.phone}</div>}
                                         </td>
@@ -199,7 +214,7 @@ export default function LoyaltyPage() {
                             <tbody className="divide-y divide-gray-100">
                                 {rewards.map(reward => {
                                     const customer = customers.find(c => c.id === reward.userId);
-                                    const customerName = customer ? (customer.displayName || customer.profileName || customer.name || 'Unknown User') : reward.userId;
+                                    const customerName = getCustomerName(customer);
                                     const customerEmail = customer?.email || '';
                                     return (
                                     <tr key={reward.id} className="hover:bg-gray-50/50 transition-colors">
