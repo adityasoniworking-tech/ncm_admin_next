@@ -53,11 +53,53 @@ const defaultItems = [
 ];
 
 const MenuRow = React.memo(({ item, onUpdate, onDelete }) => {
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [nameVal, setNameVal] = useState(item.name);
+
+    useEffect(() => {
+        setNameVal(item.name);
+    }, [item.name]);
+
     return (
         <tr className="hover:bg-gray-50/50 transition-colors group">
             <td className="px-6 py-4">
-                <div className="font-bold text-gray-800">{item.name}</div>
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">ID: {item.id}</div>
+                {isEditingName ? (
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="text"
+                            value={nameVal}
+                            onChange={(e) => setNameVal(e.target.value)}
+                            className="p-2 border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-400 outline-none text-slate-800"
+                            autoFocus
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') setIsEditingName(false);
+                                if (e.key === 'Escape') {
+                                    setNameVal(item.name);
+                                    setIsEditingName(false);
+                                }
+                            }}
+                        />
+                        <button 
+                            onClick={() => setIsEditingName(false)}
+                            className="w-7 h-7 flex items-center justify-center bg-green-50 hover:bg-green-500 text-green-600 hover:text-white rounded-lg transition-colors"
+                            title="Done"
+                        >
+                            <i className="fa-solid fa-check text-xs"></i>
+                        </button>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2">
+                        <span className="font-bold text-gray-800">{nameVal}</span>
+                        <button 
+                            onClick={() => setIsEditingName(true)}
+                            className="w-7 h-7 flex items-center justify-center bg-gray-50 hover:bg-slate-200 text-gray-400 hover:text-slate-800 rounded-lg transition-all"
+                            title="Edit Name"
+                        >
+                            <i className="fa-solid fa-pencil text-[10px]"></i>
+                        </button>
+                    </div>
+                )}
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">ID: {item.id}</div>
             </td>
             <td className="px-6 py-4">
                 <input
@@ -96,6 +138,7 @@ const MenuRow = React.memo(({ item, onUpdate, onDelete }) => {
                 <div className="flex items-center justify-center gap-2">
                     <button
                         onClick={() => onUpdate(item.docId, {
+                            name: nameVal,
                             price: Number(document.getElementById(`price-${item.docId}`).value),
                             inStock: document.getElementById(`stock-${item.docId}`).value === 'true',
                             image: document.getElementById(`img-${item.docId}`).value

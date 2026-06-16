@@ -4,7 +4,7 @@ import React from 'react';
 import { useAdmin } from '@/context/AdminContext';
 import { useRouter } from 'next/navigation';
 import { db } from '@/services/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import dynamic from 'next/dynamic';
 
 // Lazy load heavy chart components for better initial performance
@@ -29,6 +29,32 @@ export default function DashboardContent() {
     const { stats, inventory } = useAdmin();
     const router = useRouter();
     const [isMounted, setIsMounted] = React.useState(false);
+    const [isOutOfStockModalOpen, setIsOutOfStockModalOpen] = React.useState(false);
+    const [outOfStockSearch, setOutOfStockSearch] = React.useState('');
+    const [selectedCat, setSelectedCat] = React.useState('all');
+
+    const categories = React.useMemo(() => {
+        if (!inventory.outOfStockItems) return [];
+        const cats = inventory.outOfStockItems.map(item => item.cat).filter(Boolean);
+        return ['all', ...Array.from(new Set(cats))];
+    }, [inventory.outOfStockItems]);
+
+    const filteredOutOfStockItems = React.useMemo(() => {
+        if (!inventory.outOfStockItems) return [];
+        return inventory.outOfStockItems.filter(item => {
+            const matchesSearch = (item.name?.toLowerCase().includes(outOfStockSearch.toLowerCase())) || 
+                                 String(item.id).includes(outOfStockSearch);
+            const matchesCategory = selectedCat === 'all' || item.cat === selectedCat;
+            return matchesSearch && matchesCategory;
+        });
+    }, [inventory.outOfStockItems, outOfStockSearch, selectedCat]);
+
+    React.useEffect(() => {
+        if (!isOutOfStockModalOpen) {
+            setOutOfStockSearch('');
+            setSelectedCat('all');
+        }
+    }, [isOutOfStockModalOpen]);
 
     React.useEffect(() => {
         setIsMounted(true);
@@ -207,10 +233,13 @@ export default function DashboardContent() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
-                        <div className="bg-white/50 backdrop-blur-md p-5 md:p-8 rounded-[2rem] border border-white relative overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                        <div
+                            onClick={() => setIsOutOfStockModalOpen(true)}
+                            className="bg-white/50 backdrop-blur-md p-5 md:p-8 rounded-[2rem] border border-white relative overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer hover:bg-white/80 active:scale-[0.98] group/card"
+                        >
                             <div className="flex justify-between items-end mb-4">
-                                <span className="text-red-500 font-black text-[10px] tracking-[0.2em] uppercase">Critical</span>
-                                <span className="text-4xl font-black text-red-500 drop-shadow-sm">{inventory.outOfStock}</span>
+                                <span className="text-red-500 font-black text-[10px] tracking-[0.2em] uppercase group-hover/card:text-red-600 transition-colors">Critical</span>
+                                <span className="text-4xl font-black text-red-500 drop-shadow-sm group-hover/card:scale-110 transition-transform duration-300 origin-bottom-right">{inventory.outOfStock}</span>
                             </div>
                             <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden ring-1 ring-slate-200">
                                 <div
@@ -218,7 +247,10 @@ export default function DashboardContent() {
                                     style={{ width: `${(inventory.outOfStock / (inventory.total || 1)) * 100}%` }}
                                 ></div>
                             </div>
-                            <p className="mt-5 text-slate-500 text-xs font-bold tracking-wide uppercase">Out of Stock</p>
+                            <div className="flex justify-between items-center mt-5">
+                                <p className="text-slate-500 text-xs font-bold tracking-wide uppercase">Out of Stock</p>
+                                <span className="text-[10px] text-blue-500 font-black tracking-widest uppercase opacity-0 group-hover/card:opacity-100 transition-opacity">View List &rarr;</span>
+                            </div>
                         </div>
 
                         <div className="bg-white/50 backdrop-blur-md p-5 md:p-8 rounded-[2rem] border border-white shadow-sm hover:shadow-md transition-shadow">
@@ -290,6 +322,159 @@ export default function DashboardContent() {
                     </div>
                 </button>
             </div>
+
+            {/* Out of Stock Modal */}
+            {isOutOfStockModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    {/* Backdrop */}
+                    <div 
+                        className="absolute inset-0 bg-slate-900/40 backdrop-blur-md transition-opacity duration-300 animate-fadeIn" 
+                        onClick={() => setIsOutOfStockModalOpen(false)}
+                    ></div>
+
+                    {/* Modal Content */}
+                    <div className="relative w-full max-w-2xl bg-white/95 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-slate-100 p-6 md:p-8 overflow-hidden z-10 max-h-[85vh] flex flex-col animate-scaleIn">
+                        {/* Header */}
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 className="text-2xl font-black tracking-tighter text-slate-800 flex items-center gap-2">
+                                    Out of Stock Items
+                                    <span className="bg-red-500/10 text-red-500 text-xs font-extrabold px-2.5 py-1 rounded-full">
+                                        {inventory.outOfStockItems?.length || 0}
+                                    </span>
+                                </h3>
+                                <p className="text-slate-500 font-bold text-xs tracking-widest uppercase mt-0.5">Quick Stock Control</p>
+                            </div>
+                            <button 
+                                onClick={() => setIsOutOfStockModalOpen(false)}
+                                className="w-10 h-10 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 rounded-full transition-all"
+                            >
+                                <i className="fa-solid fa-xmark text-lg"></i>
+                            </button>
+                        </div>
+
+                        {/* Search & Filters */}
+                        {inventory.outOfStockItems && inventory.outOfStockItems.length > 0 && (
+                            <div className="mb-6 space-y-4">
+                                {/* Search Bar */}
+                                <div className="relative">
+                                    <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Search out-of-stock items..." 
+                                        value={outOfStockSearch}
+                                        onChange={(e) => setOutOfStockSearch(e.target.value)}
+                                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-red-400/50 text-slate-800 text-sm font-medium transition-all"
+                                    />
+                                    {outOfStockSearch && (
+                                        <button 
+                                            onClick={() => setOutOfStockSearch('')}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                        >
+                                            <i className="fa-solid fa-circle-xmark"></i>
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Category Pills */}
+                                <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
+                                    {categories.map((cat) => (
+                                        <button
+                                            key={cat}
+                                            onClick={() => setSelectedCat(cat)}
+                                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap ${
+                                                selectedCat === cat
+                                                    ? 'bg-slate-800 text-white shadow-md shadow-slate-800/10'
+                                                    : 'bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-100'
+                                            }`}
+                                        >
+                                            {cat === 'all' ? 'Show All' : cat}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* List container */}
+                        <div className="flex-1 overflow-y-auto pr-1 space-y-4 min-h-0 hide-scrollbar">
+                            {!inventory.outOfStockItems || inventory.outOfStockItems.length === 0 ? (
+                                <div className="text-center py-12 flex flex-col items-center justify-center">
+                                    <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mb-4 text-green-500">
+                                        <i className="fa-solid fa-circle-check text-4xl"></i>
+                                    </div>
+                                    <h4 className="text-lg font-black text-slate-800">All Items In Stock!</h4>
+                                    <p className="text-slate-500 font-bold text-xs uppercase tracking-wider mt-1">Excellent Inventory Health</p>
+                                </div>
+                            ) : filteredOutOfStockItems.length === 0 ? (
+                                <div className="text-center py-12 flex flex-col items-center justify-center">
+                                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4 text-slate-400">
+                                        <i className="fa-solid fa-magnifying-glass text-3xl"></i>
+                                    </div>
+                                    <h4 className="text-lg font-black text-slate-800">No Match Found</h4>
+                                    <p className="text-slate-500 font-bold text-[10px] uppercase tracking-widest mt-1">Try searching for something else</p>
+                                </div>
+                            ) : (
+                                filteredOutOfStockItems.map((item) => (
+                                    <div 
+                                        key={item.docId} 
+                                        className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-all hover:shadow-md"
+                                    >
+                                        <div className="flex items-center gap-4 w-full sm:w-auto">
+                                            {item.image ? (
+                                                <img 
+                                                    src={item.image} 
+                                                    alt={item.name} 
+                                                    className="w-14 h-14 rounded-xl object-cover border border-slate-100"
+                                                    onError={(e) => {
+                                                        e.target.onerror = null;
+                                                        e.target.src = "https://images.unsplash.com/photo-1515037893149-de7f840978e2";
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
+                                                    <i className="fa-solid fa-cookie text-xl"></i>
+                                                </div>
+                                            )}
+                                            <div className="text-left">
+                                                <h4 className="font-black text-slate-800 text-sm leading-snug">{item.name}</h4>
+                                                <div className="flex flex-wrap items-center gap-2 mt-1">
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">ID: {item.id}</span>
+                                                    <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                                                    <span className="bg-slate-200/60 text-slate-600 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
+                                                        {item.cat}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100/60">
+                                            <div className="text-left sm:text-right">
+                                                <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400">Price</span>
+                                                <span className="text-sm font-black text-slate-800">₹{item.price}</span>
+                                            </div>
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        const itemRef = doc(db, 'menu', item.docId);
+                                                        await updateDoc(itemRef, { inStock: true });
+                                                    } catch (error) {
+                                                        console.error('Error updating stock status:', error);
+                                                        alert('Failed to update stock status.');
+                                                    }
+                                                }}
+                                                className="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-[10px] font-black tracking-widest uppercase px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5"
+                                            >
+                                                <i className="fa-solid fa-circle-check"></i>
+                                                Mark In Stock
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

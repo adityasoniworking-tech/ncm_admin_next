@@ -1,7 +1,5 @@
 import { Inter } from 'next/font/google';
 import "./globals.css";
-import { AdminProvider } from "@/context/AdminContext";
-import AdminLayout from "@/components/layout/AdminLayout";
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -22,12 +20,9 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="antialiased">
-        <AdminProvider>
-          <AdminLayout>
-            {children}
-          </AdminLayout>
-        </AdminProvider>
+        {children}
       </body>
     </html>
   );
 }
+

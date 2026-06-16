@@ -21,6 +21,10 @@ export default function AdminLayout({ children }) {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [checkingAuth, setCheckingAuth] = useState(true);
 
+    if (pathname && pathname.startsWith('/keystatic')) {
+        return children;
+    }
+
     // Optimized Auth Listener (Mount only)
     useEffect(() => {
         const isAuth = sessionStorage.getItem('ncm_admin_auth') === 'true';
@@ -56,7 +60,7 @@ export default function AdminLayout({ children }) {
         };
 
         const requiredPermission = pathMap[pathname];
-        if (requiredPermission === 'dashboard' || requiredPermission === 'profile') return;
+        if (requiredPermission === 'dashboard' || requiredPermission === 'profile' || pathname.startsWith('/keystatic')) return;
 
         if (requiredPermission && userProfile.role !== 'full') {
             if (!userProfile.permissions?.includes(requiredPermission)) {
@@ -106,7 +110,7 @@ export default function AdminLayout({ children }) {
         );
     }
     if (!isAuthenticated && pathname !== '/login') return null;
-    if (pathname === '/login') return children;
+    if (pathname === '/login' || pathname.startsWith('/keystatic')) return children;
 
     return (
         <>

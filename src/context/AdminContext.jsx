@@ -20,6 +20,7 @@ export function AdminProvider({ children }) {
         inStock: 0,
         outOfStock: 0,
         total: 0,
+        outOfStockItems: [],
     });
 
     const [userProfile, setUserProfile] = useState(null);
@@ -160,14 +161,19 @@ export function AdminProvider({ children }) {
             let inStock = 0;
             let outOfStock = 0;
             let total = snapshot.size;
+            let outOfStockItems = [];
 
-            snapshot.docs.forEach(doc => {
-                const item = doc.data();
-                if (item.inStock === true) inStock++;
-                else outOfStock++;
+            snapshot.docs.forEach(docSnap => {
+                const item = { docId: docSnap.id, ...docSnap.data() };
+                if (item.inStock === true) {
+                    inStock++;
+                } else {
+                    outOfStock++;
+                    outOfStockItems.push(item);
+                }
             });
 
-            setInventory({ inStock, outOfStock, total });
+            setInventory({ inStock, outOfStock, total, outOfStockItems });
         });
 
         return () => unsubscribe();
