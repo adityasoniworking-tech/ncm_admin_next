@@ -160,6 +160,59 @@ const MenuRow = React.memo(({ item, onUpdate, onDelete }) => {
 });
 MenuRow.displayName = 'MenuRow';
 
+const CategoryBadge = React.memo(({ cat, onUpdate, onDelete }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [nameVal, setNameVal] = useState(cat.name);
+
+    useEffect(() => {
+        setNameVal(cat.name);
+    }, [cat.name]);
+
+    const handleUpdate = () => {
+        const trimmedName = nameVal.trim();
+        if (trimmedName && trimmedName !== cat.name) {
+            onUpdate(cat.docId, trimmedName);
+        } else {
+            setNameVal(cat.name);
+        }
+        setIsEditing(false);
+    };
+
+    return (
+        <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-full border border-gray-100 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100">
+            {isEditing ? (
+                <input
+                    type="text"
+                    value={nameVal}
+                    onChange={(e) => setNameVal(e.target.value)}
+                    className="bg-transparent border-b border-gray-400 outline-none w-auto min-w-[80px] text-center focus:border-purple-500"
+                    autoFocus
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleUpdate();
+                        if (e.key === 'Escape') {
+                            setNameVal(cat.name);
+                            setIsEditing(false);
+                        }
+                    }}
+                    onBlur={handleUpdate}
+                />
+            ) : (
+                <span 
+                    className="cursor-pointer" 
+                    onClick={() => setIsEditing(true)}
+                    title="Click to edit"
+                >
+                    {cat.name}
+                </span>
+            )}
+            <button onClick={() => onDelete(cat.docId)} className="text-red-400 hover:text-red-600 ml-1">
+                <i className="fa-solid fa-circle-xmark"></i>
+            </button>
+        </div>
+    );
+});
+CategoryBadge.displayName = 'CategoryBadge';
+
 export default function MenuPage() {
     const [menuItems, setMenuItems] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -253,8 +306,21 @@ export default function MenuPage() {
         }
     };
 
+    const handleUpdateCategory = async (docId, newName) => {
+        try {
+            const catRef = doc(db, 'categories', docId);
+            await updateDoc(catRef, { name: newName });
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to update category');
+        }
+    };
+
     const resetDefaultMenu = async () => {
-        if (!confirm('Reset menu to defaults?')) return;
+        if (!window.confirm("⚠️ ARE YOU SURE? This will wipe the current menu and restore default items!")) return;
+        const confirm2 = window.prompt("Type 'DELETE' to confirm:");
+        if (confirm2 !== "DELETE") return;
+        
         try {
             const snapshot = await getDocs(collection(db, 'menu'));
             await Promise.all(snapshot.docs.map(d => deleteDoc(d.ref)));
@@ -262,6 +328,7 @@ export default function MenuPage() {
             alert('Menu reset!');
         } catch (error) {
             console.error('Error:', error);
+            alert('Failed to reset menu');
         }
     };
 
@@ -288,10 +355,12 @@ export default function MenuPage() {
                     <div className="p-6 border-t border-gray-50 space-y-6">
                         <div className="flex flex-wrap gap-2">
                             {categories.map(cat => (
-                                <div key={cat.docId} className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-full border border-gray-100 text-sm font-medium text-gray-700">
-                                    {cat.name}
-                                    <button onClick={() => handleDeleteCategory(cat.docId)} className="text-red-400 hover:text-red-600"><i className="fa-solid fa-circle-xmark"></i></button>
-                                </div>
+                                <CategoryBadge 
+                                    key={cat.docId} 
+                                    cat={cat} 
+                                    onUpdate={handleUpdateCategory}
+                                    onDelete={handleDeleteCategory}
+                                />
                             ))}
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
